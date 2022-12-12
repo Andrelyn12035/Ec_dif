@@ -1,11 +1,12 @@
-from flask import Flask, render_template, jsonify
+from flask import Flask, render_template, jsonify, request
 from numpy import *
 from sympy import *
+from fractions import Fraction
+import re
 
 import base64
 import io
 
-from flask import Flask, request
 from sympy.plotting import plot
 
 
@@ -16,6 +17,51 @@ x, y = symbols('x y')
 @app.route('/')
 def index():
     return render_template('index.html')
+app.config['TESTING'] = True
+
+@app.route('/test', methods=['POST', 'GET'])
+def test():
+    if request.method=='POST':
+        str = request.get_json()
+
+        c1 = str["c1"]
+        c2 = str["c2"]
+        c3 = str["c3"]
+        y1 = ""
+        y2 = ""
+        n1 = ""
+        n2 = ""
+        com = false
+        bool = false
+        o_var = sympify(c1+"*(x**2)+"+c2+"*x+"+c3)
+        var = solve(o_var, x)
+        nvar = "{}".format(var[0])
+        
+        match = re.search('[iI]', nvar)
+        if match:
+           y1 = (var[0].as_real_imag())[0]
+           i1 = (var[0].as_real_imag())[1]
+           y2 = (var[1].as_real_imag())[0]
+           i2 = (var[1].as_real_imag())[1]
+        else:
+            if len(var) >= 2 :
+                y1 = var[0]
+                y2 = var[1]
+                i1 = x
+                i2 = x
+            else: 
+                y1 = var[0]
+                y2 = var[0]
+                i1 = x
+                i2 = x
+        data = {
+            "y1" : latex(y1),
+            "y2" : latex(y2),
+            "i1" : latex(i1),
+            "i2" : latex(i2),
+        }
+    return jsonify(data)
+
 
 @app.route('/formato-1', methods=['POST', 'GET'])
 def formato_1():
@@ -30,7 +76,7 @@ def formato_1():
         else:
             fun = exp
         a = exp.args
-        print(a);
+        print(a)
         pprint(exp)
     return latex(fun)
 
@@ -85,7 +131,6 @@ def area_1():
         elif met=="2":
             delta = (b-a)/ene
             for i in range(1,ene):
-                #print(i)
                 su += 2*equ.subs(x, a+(i*delta))
             area = (delta/2)*(equ.subs(x, a)+equ.subs(x, b)+su)
         else:
